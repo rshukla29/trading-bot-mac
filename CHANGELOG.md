@@ -10,6 +10,8 @@ that needs people to do something (e.g. new settings in .env).
 
 ## Unreleased
 
+## 1.3.0 — 2026-11-18
+
 - First macOS version. Download **Install-Trading-Bots-mac.zip** from the release page and double-click the installer inside: it installs Apple's command line tools and Python if needed, downloads the bots into the trading-bot folder in your home folder and sets everything up (docs/SETUP.md, step 4).
 - The bots start at their usual New York times through macOS's own scheduler (launchd), in your Mac's time zone, and the Mac wakes itself at 7:50am on weekdays and stays awake while the control server runs (8am to 6pm). Keep a laptop plugged in with the lid open.
 - A **Trading dashboard** app on the Desktop opens the dashboard; update notices and readiness problems appear as macOS notifications; **Update now** works the same as on Windows.
