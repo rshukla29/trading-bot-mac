@@ -6,6 +6,7 @@
     {"name": "BotControlServer", "ny": "08:00", "at_logon": true},
     {"name": "StepStopTradingBot", "ny": "09:25"},
     {"name": "ORBTradingBot", "ny": "09:30"},
+    {"name": "OrbHpTradingBot", "ny": "09:30"},
     {"name": "StockOrbTradingBot", "ny": "09:30"},
     {"name": "TrendJoinTradingBot", "ny": "09:50"},
     {"name": "CreditOrbTradingBot", "ny": "10:20"},

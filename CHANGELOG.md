@@ -10,6 +10,8 @@ that needs people to do something (e.g. new settings in .env).
 
 ## Unreleased
 
+- New paper-experiment strategy **ORB-0DTE-HP**: SPY same-day calls and puts when a 5-minute candle closes on the same side of the 9 EMA, 50 SMA, 200 SMA and VWAP as a fresh MACD cross (MACD above 0 for calls, below for puts); sold after the first opposite-colour candle, flat by 3:55pm. Own Rules tab card and Start / Pause / Stop buttons. The 4-year backtest lost money (profit factor 0.60), so it's for paper testing only.
+
 ## 1.3.0 — 2026-11-18
 
 - First macOS version. Download **Install-Trading-Bots-mac.zip** from the release page and double-click the installer inside: it installs Apple's command line tools and Python if needed, downloads the bots into the trading-bot folder in your home folder and sets everything up (docs/SETUP.md, step 4).

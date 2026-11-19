@@ -26,6 +26,7 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
     "SnapshotPremarketBot": [("snapshot_premarket", ["tradingbot.run_snapshot", "premarket"])],
     "StepStopTradingBot": [("step_stop", ["tradingbot.run_step_stop_bot"])],
     "ORBTradingBot": [("orb", ["tradingbot.run_orb_bot"])],
+    "OrbHpTradingBot": [("orb_hp", ["tradingbot.run_orb_hp_bot"])],
     "StockOrbTradingBot": [("stock_orb", ["tradingbot.run_stock_orb_bot"])],
     "TrendJoinTradingBot": [("trend_join", ["tradingbot.run_trend_join_bot"])],
     "CreditOrbTradingBot": [("credit_orb", ["tradingbot.run_credit_orb_bot"])],
