@@ -91,6 +91,7 @@ OLD=$(git rev-parse HEAD)
 
 rollback() {
     say "FAILED: $1 - going back to $FROM"
+    git merge --abort >/dev/null 2>&1
     git reset --hard --quiet "$OLD"
     "$PY" -m pip install --quiet -e ".[dev]" >/dev/null 2>&1
     register_tasks >/dev/null 2>&1
@@ -98,7 +99,12 @@ rollback() {
     restart_server; exit 1
 }
 
-git merge --ff-only --quiet "$VERSION" || rollback "this copy has commits of its own, so it can't move straight to the release"
+# The bots commit each day's reports and reviews to this copy, so it usually
+# has commits of its own: merge the release in, keeping them. Where a file
+# differs on both sides, the release's version wins (code is never edited
+# here: step 1 refused edited files).
+git merge --no-edit --quiet -X theirs -m "Update to $VERSION" "$VERSION" \
+    || rollback "the release couldn't be merged with this copy's own commits"
 
 # 3. Packages, a load check, the launchd jobs.
 "$PY" -m pip install --quiet -e ".[dev]" || rollback "installing the Python packages failed"
