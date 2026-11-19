@@ -7,11 +7,11 @@ An installed copy checks once a day, when the control server starts: it
 runs `git fetch --tags` against the repo it was cloned from (no API key,
 nothing sent but the fetch) and compares the newest vX.Y.Z tag with its own
 version. A newer one shows a banner on the Bot controls tab with the
-release notes and an Update now button (scripts/update.ps1, only while the
-bots are idle), plus one Windows notification per new version.
+release notes and an Update now button (scripts/update.sh, only while the
+bots are idle), plus one macOS notification per new version.
 
     data/update_status.json   last check: current, latest, notes, notified
-    data/update_result.json   written by update.ps1: the last update's outcome
+    data/update_result.json   written by update.sh: the last update's outcome
 """
 from __future__ import annotations
 
@@ -152,7 +152,7 @@ def bots_busy(now: datetime | None = None) -> bool:
 
 def last_result(now: datetime | None = None) -> dict | None:
     try:
-        r = json.loads(RESULT.read_text(encoding="utf-8-sig"))  # PowerShell writes a BOM
+        r = json.loads(RESULT.read_text(encoding="utf-8-sig"))  # tolerate a BOM
     except (OSError, ValueError):
         return None
     if r.get("running"):
@@ -160,7 +160,7 @@ def last_result(now: datetime | None = None) -> dict | None:
             age = ((now or datetime.now(ET)) - datetime.fromisoformat(r["at"])).total_seconds()
         except (KeyError, ValueError, TypeError):
             age = 1e9
-        if age > 15 * 60:  # update.ps1 never reported back
+        if age > 15 * 60:  # update.sh never reported back
             return {"ok": False, "from": r.get("from"), "to": r.get("to"), "at": r.get("at"),
                     "message": "The last update didn't report back. See the logs folder (update_*.log)."}
     return r
@@ -177,30 +177,28 @@ def payload() -> dict:
 
 
 def notify_once(status: dict) -> bool:
-    """One Windows notification per new version. True if one was shown."""
-    if not status.get("available") or status.get("notified") == status.get("latest") or sys.platform != "win32":
+    """One macOS notification per new version. True if one was shown."""
+    if not status.get("available") or status.get("notified") == status.get("latest") or sys.platform != "darwin":
         return False
     from tradingbot import notify
     text = f"Version {status['latest']} is available (you have {status['current']}). Open the dashboard's Bot controls tab to update."
-    if not notify.windows_notify("Trading bots update", text):
+    if not notify.mac_notify("Trading bots update", text):
         return False
     _write(STATUS, {**status, "notified": status["latest"]})
     return True
 
 
 def mark_running(have: str, to: str) -> None:
-    """Shown until update.ps1 writes the outcome (a stale mark, e.g. after a
+    """Shown until update.sh writes the outcome (a stale mark, e.g. after a
     crash, is ignored after 15 minutes)."""
     _write(RESULT, {"running": True, "from": have, "to": to, "at": datetime.now(ET).isoformat(timespec="seconds")})
 
 
 def start_update(version: str) -> None:
-    """Run scripts/update.ps1 in the background. It stops and restarts the
-    control server itself, so it must outlive this process."""
+    """Run scripts/update.sh in the background. It stops and restarts the
+    control server itself, so it must outlive this process (own session)."""
     log_dir = REPO / "logs"
     log_dir.mkdir(exist_ok=True)
     log = open(log_dir / f"update_{datetime.now(ET):%Y-%m-%d}.log", "ab")
-    subprocess.Popen(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden",
-                      "-File", str(REPO / "scripts" / "update.ps1"), "-Version", "v" + version.lstrip("v")],
-                     cwd=str(REPO), stdout=log, stderr=log, stdin=subprocess.DEVNULL,
-                     creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP)
+    subprocess.Popen(["/bin/bash", str(REPO / "scripts" / "update.sh"), "v" + version.lstrip("v")],
+                     cwd=str(REPO), stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True)

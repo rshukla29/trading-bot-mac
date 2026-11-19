@@ -1,0 +1,148 @@
+# Runs the Mac version on GitHub's Mac machines at every push: the one-click
+# installer end to end in a fresh folder, the launchd jobs, a job actually
+# firing, the wake-up, the desktop app, an update, and the release zip.
+# Never talks to IBKR: no TWS here, and the jobs only log what they'd run.
+name: macOS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14            # Apple Silicon, Sonoma; uses the Python already on the machine
+            force_python: "0"
+          - os: macos-15            # Apple Silicon, Sequoia; installs python.org's Python like a new Mac
+            force_python: "1"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      TB_SETUP_TEST: "1"
+      TB_DRY_JOBS: "1"
+      TB_INSTALL_DIR: ${{ github.workspace }}/../tb-install
+      TB_REPO_URL: ${{ github.workspace }}
+      TB_DESKTOP: ${{ github.workspace }}/../Desktop
+      TB_FORCE_PYTHON_INSTALL: ${{ matrix.force_python }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Commit identity for the test clone
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@localhost"
+
+      - name: Release zip keeps the installer runnable
+        run: |
+          python3 scripts/release.py --build-zip "$RUNNER_TEMP/installer.zip"
+          mkdir "$RUNNER_TEMP/unzipped"
+          ditto -x -k "$RUNNER_TEMP/installer.zip" "$RUNNER_TEMP/unzipped"
+          test -x "$RUNNER_TEMP/unzipped/Install-Trading-Bots.command"
+          cp "$RUNNER_TEMP/unzipped/Install-Trading-Bots.command" "$RUNNER_TEMP/Install-Trading-Bots.command"
+
+      - name: python.org installer link is alive
+        run: |
+          url=$(grep -o 'https://www.python.org/ftp/python/[^"]*' Install-Trading-Bots.command | head -1)
+          url=${url//\$PY_VERSION/$(grep -o 'PY_VERSION="[^"]*"' Install-Trading-Bots.command | cut -d'"' -f2)}
+          echo "$url"; curl -fsSIL "$url" | head -1
+
+      - name: One-click installer, fresh folder (from the unzipped copy)
+        run: bash "$RUNNER_TEMP/Install-Trading-Bots.command"
+
+      - name: python.org Python was installed (new-Mac run only)
+        if: matrix.force_python == '1'
+        run: |
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 --version
+          "$TB_INSTALL_DIR/.venv/bin/python" -c "import sys; print(sys.version); assert sys.version_info[:2] == (3, 12)"
+
+      - name: Every launchd job is loaded at its New York time
+        run: |
+          cd "$TB_INSTALL_DIR"
+          .venv/bin/python -m tradingbot.macos status
+          n=$(launchctl list | grep -c com.tradingbots.)
+          want=$(.venv/bin/python -c "import json; print(len(json.load(open('scripts/schedule.json'))['tasks']))")
+          echo "loaded $n of $want"; test "$n" = "$want"
+          ls ~/Library/LaunchAgents/com.tradingbots.*.plist
+          plutil -lint ~/Library/LaunchAgents/com.tradingbots.*.plist
+          .venv/bin/python - <<'EOF'
+          from tradingbot import run_control_server as srv
+          w = srv.schedule_warnings(srv.task_info(fresh=True))
+          print("schedule warnings:", w); assert not w
+          EOF
+
+      - name: A job fires through launchd and writes its log
+        run: |
+          cd "$TB_INSTALL_DIR"
+          launchctl kickstart "gui/$(id -u)/com.tradingbots.ORBTradingBot"
+          for i in $(seq 1 30); do ls logs/orb_*.log >/dev/null 2>&1 && break; sleep 1; done
+          cat logs/orb_*.log
+          grep -q "would run python -m tradingbot.run_orb_bot" logs/orb_*.log
+
+      - name: The dashboard's Run now reaches launchd
+        run: |
+          cd "$TB_INSTALL_DIR"
+          .venv/bin/python -c "from tradingbot import macos; macos.start_task('ExpiryGuardBot')"
+          for i in $(seq 1 30); do ls logs/expiry_guard_*.log >/dev/null 2>&1 && break; sleep 1; done
+          grep -q "would run python -m tradingbot.run_expiry_guard" logs/expiry_guard_*.log
+
+      - name: Weekday wake-up is set
+        run: |
+          pmset -g sched
+          cd "$TB_INSTALL_DIR"
+          .venv/bin/python -c "from tradingbot import readiness as r; c = r.check_sleep(); print(c); assert c['status'] == 'pass'"
+
+      - name: Desktop app was built
+        run: |
+          test -d "$TB_DESKTOP/Trading dashboard.app"
+          osadecompile "$TB_DESKTOP/Trading dashboard.app/Contents/Resources/Scripts/main.scpt"
+
+      - name: Dashboard builds and the control server answers
+        run: |
+          cd "$TB_INSTALL_DIR"
+          .venv/bin/python -m tradingbot.run_dashboard
+          (.venv/bin/python -m tradingbot.run_control_server --idle 1 > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/api/ping && break; sleep 1; done
+          curl -fs http://127.0.0.1:8765/api/state | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d))"
+          curl -fs http://127.0.0.1:8765/api/rules > /dev/null
+          pkill -f tradingbot.run_control_server || true
+
+      - name: Notification command works
+        continue-on-error: true
+        run: osascript -e 'on run argv' -e 'display notification (item 2 of argv) with title (item 1 of argv)' -e 'end run' "Trading bots" "CI test"
+
+      - name: Update to a new release, then a failed one rolls back
+        run: |
+          git -C "$GITHUB_WORKSPACE" commit --allow-empty -qm "CI: next release"
+          git -C "$GITHUB_WORKSPACE" tag -a v99.0.0 -m v99.0.0
+          cd "$TB_INSTALL_DIR"
+          bash scripts/update.sh v99.0.0 --no-restart --no-tasks
+          cat data/update_result.json
+          python3 -c "import json; r=json.load(open('data/update_result.json')); assert r['ok'], r"
+          test "$(git rev-parse HEAD)" = "$(git -C "$GITHUB_WORKSPACE" rev-parse v99.0.0^{commit})"
+          bash scripts/update.sh v99.9.9 --no-restart --no-tasks || true
+          python3 -c "import json; r=json.load(open('data/update_result.json')); assert not r['ok'] and 'not found' in r['message'], r"
+
+      - name: Installer again is safe (keeps the download and .env)
+        run: |
+          echo "# kept" >> "$TB_INSTALL_DIR/.env"
+          TB_FORCE_PYTHON_INSTALL=0 bash "$RUNNER_TEMP/Install-Trading-Bots.command"
+          grep -q "# kept" "$TB_INSTALL_DIR/.env"
+
+      - name: Installer refuses a folder that's in use
+        run: |
+          mkdir -p "$RUNNER_TEMP/busy" && echo x > "$RUNNER_TEMP/busy/notes.txt"
+          if TB_INSTALL_DIR="$RUNNER_TEMP/busy" TB_FORCE_PYTHON_INSTALL=0 bash "$RUNNER_TEMP/Install-Trading-Bots.command"; then
+            echo "should have refused"; exit 1
+          fi
+
+      - name: Remove the jobs
+        if: always()
+        run: |
+          cd "$TB_INSTALL_DIR" 2>/dev/null && .venv/bin/python -m tradingbot.macos remove || true
+          launchctl list | grep com.tradingbots. || echo "all removed"

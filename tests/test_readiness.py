@@ -29,26 +29,34 @@ def test_trade_diary_folder_must_exist(monkeypatch, tmp_path):
     assert c["status"] == PASS and "created at the first trade" in c["detail"]
 
 
-def test_sleep_setting():
-    assert rd.check_sleep(0)["status"] == PASS
-    c = rd.check_sleep(30)
-    assert c["status"] == WARN and "30 minutes" in c["detail"] and "Never" in c["fix"]
+def test_wake_setting():
+    assert rd.check_sleep(True)["status"] == PASS
+    c = rd.check_sleep(False)
+    assert c["status"] == WARN and "wake-up" in c["detail"] and "Install-Trading-Bots" in c["fix"]
+
+
+def test_reads_the_repeating_wake_from_pmset():
+    sched = ("Repeating power events:\n  wakepoweron at 7:50AM weekdays only\n"
+             "Scheduled power events:\n [0]  wake at 11/19/2026 07:50:00 by 'com.apple.alarm'\n")
+    assert rd.has_repeating_wake(sched)
+    assert not rd.has_repeating_wake("Scheduled power events:\n [0]  wake at 11/19/2026 07:50:00\n")
+    assert not rd.has_repeating_wake("")
 
 
 def test_tasks_missing_disabled_or_off_schedule(monkeypatch):
     from tradingbot import run_control_server as srv
-    monkeypatch.setattr(srv, "schedule", lambda: [{"name": "OrbBot", "ny": "09:30", "script": "run_orb_scheduled.ps1"},
-                                                  {"name": "RSI2TradingBot", "ny": "16:30", "script": "run_rsi2_scheduled.ps1"}])
+    monkeypatch.setattr(srv, "schedule", lambda: [{"name": "OrbBot", "ny": "09:30"},
+                                                  {"name": "RSI2TradingBot", "ny": "16:30"}])
     monkeypatch.setattr(srv, "schedule_warnings", lambda tasks, plan=None: [])
     monkeypatch.setattr(srv, "task_info", lambda fresh=False: {"OrbBot": {"state": "Ready"}})
     c = rd.check_tasks()
-    assert c["status"] == FAIL and "RSI2TradingBot" in c["detail"] and "install.ps1" in c["fix"]
+    assert c["status"] == FAIL and "RSI2TradingBot" in c["detail"] and "Install-Trading-Bots" in c["fix"]
     monkeypatch.setattr(srv, "task_info", lambda fresh=False: {"OrbBot": {"state": "Ready"}, "RSI2TradingBot": {"state": "Disabled"}})
     assert "Disabled" in rd.check_tasks()["detail"]
     monkeypatch.setattr(srv, "task_info", lambda fresh=False: {"OrbBot": {"state": "Ready"}, "RSI2TradingBot": {"state": "Ready"}})
     monkeypatch.setattr(srv, "schedule_warnings", lambda tasks, plan=None: ["OrbBot runs at 8:30am, not 9:30am"])
     c = rd.check_tasks()
-    assert c["status"] == FAIL and "register_tasks.ps1" in c["fix"]
+    assert c["status"] == FAIL and "8am" in c["fix"]
     monkeypatch.setattr(srv, "schedule_warnings", lambda tasks, plan=None: [])
     assert rd.check_tasks()["status"] == PASS
 
@@ -130,7 +138,7 @@ def test_a_crash_part_way_keeps_results_and_is_not_ready(monkeypatch):
 def test_notifies_at_8am_only_when_something_fails(monkeypatch):
     from tradingbot import notify
     shown = []
-    monkeypatch.setattr(notify, "windows_notify", lambda title, text: shown.append(text) or True)
+    monkeypatch.setattr(notify, "mac_notify", lambda title, text: shown.append(text) or True)
     monkeypatch.setattr(rd, "ibkr_checks", lambda out, wait_minutes=0: out)
     monkeypatch.setattr(rd, "pc_checks", lambda: [rd.check("settings", "pc", "Safe settings", PASS)])
     rd.run(notify=True)

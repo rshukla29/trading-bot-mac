@@ -1,6 +1,6 @@
 """After-close daily facts for review: everything that happened today, per
 strategy, in one markdown file that the headless Claude review (see
-scripts/run_daily_review_scheduled.ps1) reads to write recommendations.
+run_task.py's DailyReviewBot) reads to write recommendations.
 
 Read-only: journal, today's logs, and IBKR market/account data on its own
 client ID (DAILY_REVIEW_CLIENT_ID). Never places or changes orders.

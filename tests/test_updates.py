@@ -125,8 +125,8 @@ def test_bots_busy_on_weekdays_8am_to_515pm():
 def test_one_notification_per_version(monkeypatch):
     from tradingbot import notify
     popped = []
-    monkeypatch.setattr(updates.sys, "platform", "win32")
-    monkeypatch.setattr(notify, "windows_notify", lambda title, text: popped.append(text) or True)
+    monkeypatch.setattr(updates.sys, "platform", "darwin")
+    monkeypatch.setattr(notify, "mac_notify", lambda title, text: popped.append(text) or True)
     status = {"available": True, "current": "1.0.0", "latest": "1.1.0", "notified": None}
     assert updates.notify_once(status)
     assert not updates.notify_once(updates.read_status())       # same version: no second one
@@ -141,7 +141,7 @@ def test_a_stuck_update_stops_showing_as_running():
     assert r["ok"] is False and "didn't report back" in r["message"]
 
 
-def test_result_written_by_powershell_with_a_bom_is_read():
+def test_result_with_a_bom_is_read():
     updates.RESULT.write_bytes(b'\xef\xbb\xbf{"ok": true, "message": "Updated from 1.0.0 to 1.1.0."}')
     assert updates.last_result()["ok"] is True
 

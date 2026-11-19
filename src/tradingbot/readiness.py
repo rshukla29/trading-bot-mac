@@ -43,6 +43,9 @@ NO_DATA = {354: "not subscribed", 10089: "needs an additional subscription (dela
 COMPETING = 10197  # "No market data during competing live session"
 
 
+REINSTALL = "Double-click Install-Trading-Bots again (it keeps your settings, trades and reports)"
+
+
 def check(cid: str, group: str, name: str, status: str, detail: str = "", fix: str = "") -> dict:
     return {"id": cid, "group": group, "name": name, "status": status, "detail": detail,
             "fix": fix if status in (WARN, FAIL) else ""}
@@ -52,24 +55,25 @@ def check(cid: str, group: str, name: str, status: str, detail: str = "", fix: s
 
 def check_tasks() -> dict:
     from tradingbot import run_control_server as srv
-    expected = [t["name"] for t in srv.schedule() if (REPO / "scripts" / t["script"]).exists()]
+    expected = [t["name"] for t in srv.schedule()]
     try:
         tasks = srv.task_info(fresh=True)
     except Exception as exc:
-        return check("tasks", "pc", "Scheduled tasks", WARN, f"Couldn't read Task Scheduler: {exc}",
-                     "Open Task Scheduler and check the bots' tasks exist")
+        return check("tasks", "pc", "Scheduled tasks", WARN, f"Couldn't read the launchd jobs: {exc}",
+                     REINSTALL)
     missing = [n for n in expected if tasks.get(n, {}).get("state", "Missing") == "Missing"]
     disabled = [n for n in expected if tasks.get(n, {}).get("state") == "Disabled"]
     off = srv.schedule_warnings({n: tasks[n] for n in expected if n in tasks})
     if missing:
         return check("tasks", "pc", "Scheduled tasks", FAIL, "Missing: " + ", ".join(missing),
-                     "Run scripts\\install.ps1 again (right-click → Run with PowerShell)")
+                     REINSTALL)
     if disabled:
         return check("tasks", "pc", "Scheduled tasks", FAIL, "Disabled: " + ", ".join(disabled),
-                     "In Task Scheduler, right-click each one → Enable")
+                     REINSTALL + " (it turns them back on)")
     if off:
         return check("tasks", "pc", "Scheduled tasks", FAIL, "; ".join(off),
-                     "Run scripts\\register_tasks.ps1 (right-click → Run with PowerShell)")
+                     "Wait for 8am (the control server corrects the times when it starts), or "
+                     + REINSTALL[0].lower() + REINSTALL[1:])
     return check("tasks", "pc", "Scheduled tasks", PASS, f"All {len(expected)} present, enabled and on time")
 
 
@@ -97,29 +101,35 @@ def check_journal() -> dict:
                  f"{settings.db_path}" + ("" if db.exists() else " (created at the first trade)"))
 
 
-def _powercfg_ac_minutes() -> int | None:
-    """Minutes before the PC sleeps on mains power (0 = never); None if unknown."""
-    if sys.platform != "win32":
+def _pmset_wake() -> bool | None:
+    """True if a repeating wake-up is set (`pmset -g sched`); None if unknown."""
+    if sys.platform != "darwin":
         return None
     try:
-        out = subprocess.run(["powercfg", "/query", "SCHEME_CURRENT", "SUB_SLEEP", "STANDBYIDLE"],
-                             capture_output=True, text=True, timeout=10,
-                             creationflags=subprocess.CREATE_NO_WINDOW).stdout
+        out = subprocess.run(["pmset", "-g", "sched"], capture_output=True, text=True, timeout=10).stdout
     except (OSError, subprocess.SubprocessError):
         return None
-    values = re.findall(r":\s*0x([0-9a-fA-F]+)\s*$", out, re.M)
-    return int(values[-2], 16) // 60 if len(values) >= 2 else None  # AC index, then DC; in seconds
+    return has_repeating_wake(out)
 
 
-def check_sleep(minutes: int | None = None) -> dict:
-    minutes = _powercfg_ac_minutes() if minutes is None else minutes
-    if minutes is None:
-        return check("sleep", "pc", "PC stays awake", SKIP, "Couldn't read the power settings")
-    if minutes == 0:
-        return check("sleep", "pc", "PC stays awake", PASS, "Never sleeps when plugged in")
-    return check("sleep", "pc", "PC stays awake", WARN, f"Sleeps after {minutes} minutes without use (plugged in)",
-                 "Settings → System → Power → When plugged in, put my device to sleep after: Never. "
-                 "A sleeping PC stops the bots")
+def has_repeating_wake(sched: str) -> bool:
+    """`pmset -g sched` output: a "Repeating power events" block with a wake."""
+    block = sched.split("Repeating power events:", 1)
+    return len(block) == 2 and bool(re.search(r"\bwake", block[1].split("Scheduled power events:")[0], re.I))
+
+
+def check_sleep(wake: bool | None = None) -> dict:
+    """The installer sets a 7:50am weekday wake-up; the control server keeps
+    the Mac awake from 8am to 6pm (caffeinate). A closed laptop lid still sleeps."""
+    wake = _pmset_wake() if wake is None else wake
+    if wake is None:
+        return check("sleep", "pc", "Mac wakes for the bots", SKIP, "Couldn't read the power schedule")
+    if wake:
+        return check("sleep", "pc", "Mac wakes for the bots", PASS,
+                     "Wakes before 8am on weekdays and stays awake while the control server runs (keep the lid open)")
+    return check("sleep", "pc", "Mac wakes for the bots", WARN, "No weekday wake-up is set",
+                 REINSTALL + ": it sets the 7:50am wake-up (it asks for your Mac password). "
+                 "A sleeping Mac stops the bots")
 
 
 def check_claude() -> dict:
@@ -447,8 +457,8 @@ def run(notify: bool = False, wait_minutes: float = 0) -> dict:
             logger.info("  %s %s: %s", c["status"].upper(), c["name"], c["detail"])
     if notify and (s[FAIL] or s[SKIP]):
         bad = [c["name"] for c in checks if c["status"] in (FAIL, SKIP)]
-        from tradingbot.notify import windows_notify
-        windows_notify("Trading bots: not ready",
+        from tradingbot.notify import mac_notify
+        mac_notify("Trading bots: not ready",
                        f"{len(bad)} problem{'s' if len(bad) > 1 else ''}: {', '.join(bad[:3])}{'…' if len(bad) > 3 else ''}. "
                        "Open the dashboard's Bot health tab.")
     return data
@@ -462,8 +472,7 @@ def start(notify: bool = False, wait_minutes: float = 0) -> bool:
     log_dir = REPO / "logs"
     log_dir.mkdir(exist_ok=True)
     log = open(log_dir / f"readiness_{datetime.now(ET):%Y-%m-%d}.log", "ab")
-    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     subprocess.Popen([sys.executable, "-m", "tradingbot.run_readiness", *(["--notify"] if notify else []),
                       *(["--wait", f"{wait_minutes:g}"] if wait_minutes else [])],
-                     cwd=str(REPO), stdout=log, stderr=log, stdin=subprocess.DEVNULL, creationflags=flags)
+                     cwd=str(REPO), stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True)
     return True

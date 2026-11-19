@@ -228,7 +228,7 @@
     const sw = S.schedule_warnings || [];
     q("#cp-sched").hidden = !sw.length;
     q("#cp-sched").innerHTML = sw.length ? `<b>A bot's start time is off.</b> ${sw.map(e).join("; ")}. ` +
-      `Run <code>scripts\register_tasks.ps1</code> (or the installer) to fix it.` : "";
+      `The control server corrects the times at 8am, or double-click the installer again.` : "";
     const [state, title] = summary(S.strategies);
     q("#cp-bar").dataset.state = state;
     q("#cp-title").textContent = title;

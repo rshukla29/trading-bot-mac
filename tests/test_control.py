@@ -367,11 +367,12 @@ def test_schedule_warning_when_a_task_drifts_an_hour():
     assert len(warnings) == 1 and warnings[0].startswith("StepStopTradingBot runs at 8:25am, should be 9:25am")
 
 
-def test_schedule_file_matches_the_scripts():
-    """Every task in scripts/schedule.json points at a real script."""
+def test_schedule_file_matches_the_task_runner():
+    """Every task in scripts/schedule.json is one run_task.py knows how to run."""
     from tradingbot import run_control_server as srv
+    from tradingbot import run_task
     plan = srv.schedule()
     assert {t["name"] for t in plan} >= {"SnapshotPremarketBot", "BotControlServer", "ORBTradingBot"}
     for t in plan:
-        assert (srv.SCHEDULE.parent / t["script"]).exists() or t["name"] == "StockOrbTradingBot", t
+        assert t["name"] in run_task.TASKS or t["name"] in run_task.SPECIAL, t
         assert len(t["ny"]) == 5 and t["ny"][2] == ":"

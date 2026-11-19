@@ -1,29 +1,25 @@
-"""A Windows notification (the balloon / toast in the corner), no extra
-packages: a hidden PowerShell shows it through System.Windows.Forms."""
+"""A macOS notification (Notification Centre), no extra packages: osascript's
+`display notification`. The title and text are passed as arguments, never
+pasted into the script, so no quoting can break it."""
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import sys
 
 logger = logging.getLogger(__name__)
 
-_SCRIPT = (
-    "Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; "
-    "$n = New-Object System.Windows.Forms.NotifyIcon; $n.Icon = [System.Drawing.SystemIcons]::Information; "
-    "$n.Visible = $true; $n.ShowBalloonTip(15000, $env:TB_NOTIFY_TITLE, $env:TB_NOTIFY_TEXT, 'Info'); "
-    "Start-Sleep -Seconds 16; $n.Dispose()")
+_SCRIPT = ["-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)",
+           "-e", "end run"]
 
 
-def windows_notify(title: str, text: str) -> bool:
-    """Show it (in the background); False when not on Windows or it failed."""
-    if sys.platform != "win32":
+def mac_notify(title: str, text: str) -> bool:
+    """Show it (in the background); False when not on macOS or it failed."""
+    if sys.platform != "darwin":
         return False
     try:
-        subprocess.Popen(["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", _SCRIPT],
-                         env={**os.environ, "TB_NOTIFY_TITLE": title, "TB_NOTIFY_TEXT": text},
-                         creationflags=subprocess.CREATE_NO_WINDOW)
+        subprocess.Popen(["osascript", *_SCRIPT, title, text], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError:
         logger.exception("Couldn't show the notification")
         return False

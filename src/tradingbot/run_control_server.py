@@ -1,6 +1,6 @@
 """Local control server behind the dashboard's Start / Pause / Stop buttons.
 
-Listens on 127.0.0.1:CONTROL_PORT (8765) only, so nothing outside this PC
+Listens on 127.0.0.1:CONTROL_PORT (8765) only, so nothing outside this Mac
 can reach it, and serves:
   /             the dashboard (reports dir / dashboard.html), with a live
                 Bot controls tab; /controls until the first dashboard exists
@@ -31,10 +31,10 @@ buttons through your browser.
 in the browser, or, if a dashboard page is still open from before, lets that
 page reload itself instead of opening another; --until stops the server at
 that time (New York), leaving the browser alone. The BotControlServer
-task runs it that way Monday-Friday at 8am and at logon, only between 8am
-and 6pm (scripts/run_control_server.ps1).
+launchd job runs it that way Monday-Friday at 8am and at log-in, only between
+8am and 6pm (run_task.py), under caffeinate so the Mac stays awake meanwhile.
 
-The desktop shortcut (run_dashboard --open) starts it the second way when
+The desktop app (run_dashboard --open) starts it the second way when
 it isn't running, at any hour: --now opens the page straight away, and
 --idle stops it after that many minutes with no dashboard page open,
 except during Mon-Fri 8am-6pm, when it stands in for the scheduled one.
@@ -46,7 +46,6 @@ import json
 import logging
 import mimetypes
 import sqlite3
-import subprocess
 import sys
 import threading
 import time as clock
@@ -57,7 +56,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 from zoneinfo import ZoneInfo
 
-from tradingbot import control, readiness, rules, updates
+from tradingbot import control, macos, readiness, rules, updates
 from tradingbot.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -72,7 +71,7 @@ DISPLAY_TO_ID = {"ORB (SPY 0DTE options)": "orb", "ORB credit spreads": "credit_
                  "Trend Join": "trend_join", "Stock ORB": "stock_orb", "RSI(2)": "rsi2", "MA-crossover": "ma_crossover"}
 STATIC_ROOTS = ("reports", "analysis")
 MAX_BODY = 32768  # the Rules tab's save holds every strategy's rules
-TASK_CACHE_SECONDS = 60.0  # each refresh starts PowerShell (~0.5s CPU); next-run times don't change minute to minute
+TASK_CACHE_SECONDS = 60.0  # each refresh runs launchctl twice; next-run times don't change minute to minute
 SCHEDULE = Path(__file__).resolve().parents[2] / "scripts" / "schedule.json"
 
 
@@ -95,12 +94,6 @@ _task_cache: dict = {"at": 0.0, "data": {}}
 _task_lock = threading.Lock()
 
 
-def _powershell(cmd: str, timeout: float = 20.0) -> str:
-    out = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
-                         capture_output=True, text=True, timeout=timeout)
-    return out.stdout.strip()
-
-
 def schedule() -> list[dict]:
     """scripts/schedule.json's tasks: [{"name", "ny": "HH:MM", "script"}]."""
     try:
@@ -117,30 +110,26 @@ def all_task_names() -> list[str]:
 
 def task_info(fresh: bool = False) -> dict[str, dict]:
     """Every known task: {name: {"state": Ready|Running|Disabled|Missing,
-    "next": "Mon 9:30am", "next_at": ISO local time or ""}}, cached for a few
-    seconds (each PowerShell call takes ~1s)."""
+    "next": "Mon 9:30am", "next_at": ISO local time or ""}}, from launchd
+    (macos.py), cached for a minute."""
     names = all_task_names()
     with _task_lock:
         if not fresh and clock.monotonic() - _task_cache["at"] < TASK_CACHE_SECONDS:
             return _task_cache["data"]
-        cmd = ("Get-ScheduledTask -TaskName " + ",".join(f"'{n}'" for n in names) + " -ErrorAction SilentlyContinue | "
-               "ForEach-Object { $i = $_ | Get-ScheduledTaskInfo; [pscustomobject]@{n=$_.TaskName; s=[string]$_.State; "
-               "r=$(if ($i.NextRunTime) { $i.NextRunTime.ToString('s') } else { '' })} } | ConvertTo-Json -Compress")
         data = {n: {"state": "Missing", "next": "", "next_at": ""} for n in names}
         try:
-            raw = _powershell(cmd)
-            rows = json.loads(raw) if raw else []
-            for r in rows if isinstance(rows, list) else [rows]:
-                data[r["n"]] = {"state": r["s"], "next": _when(r["r"]) if r["r"] else "", "next_at": r["r"] or ""}
+            for n, info in macos.task_info(names).items():
+                data[n] = {"state": info["state"], "next": _when(info["next_at"]) if info["next_at"] else "",
+                           "next_at": info["next_at"]}
         except Exception:
-            logger.exception("Couldn't read the scheduled tasks")
+            logger.exception("Couldn't read the launchd jobs")
         _task_cache.update(at=clock.monotonic(), data=data)
         return data
 
 
 def start_task(name: str) -> bool:
     try:
-        _powershell(f"Start-ScheduledTask -TaskName '{name}'")
+        macos.start_task(name)
         logger.info("Started task %s", name)
         _task_cache["at"] = 0.0
         return True
@@ -248,7 +237,7 @@ def apply_readiness(body: dict) -> tuple[dict, str]:
 
 
 def apply_update(body: dict) -> tuple[dict, str]:
-    """The Update now button: start scripts/update.ps1 for the offered
+    """The Update now button: start scripts/update.sh for the offered
     version, only while no bot is (or is about to be) running."""
     info = updates.payload()
     if not info["available"]:
@@ -539,8 +528,11 @@ def stop_when_idle(server: ThreadingHTTPServer, minutes: float, poll: float = 30
 
 def check_for_update() -> None:
     """Once per server start (8am on weekdays): a newer release? Then the
-    Bot controls tab shows it, and Windows shows one notification. Then the
-    readiness check, with a notification if something's wrong at 8am."""
+    Bot controls tab shows it, and macOS shows one notification. Then the
+    readiness check, with a notification if something's wrong at 8am. First,
+    if a job's time is off (New York and this Mac changed clocks on different
+    dates), the jobs are re-registered (all but the running ones)."""
+    fix_schedule()
     status = updates.check()
     if status.get("available"):
         logger.info("Version %s is available (this is %s)", status["latest"], status["current"])
@@ -548,6 +540,21 @@ def check_for_update() -> None:
     # At 8am TWS may still need its weekly log-in: wait up to 10 minutes for it before reporting.
     scheduled = in_service_hours(datetime.now(ET))
     readiness.start(notify=scheduled, wait_minutes=10 if scheduled else 0)
+
+
+def fix_schedule() -> list[str]:
+    """Re-register the launchd jobs when a time is off; the warnings it fixed."""
+    try:
+        off = schedule_warnings(task_info(fresh=True))
+        if off:
+            logger.warning("Job times off (%s) - re-registering the launchd jobs", "; ".join(off))
+            for line in macos.register_all(skip_running=True):
+                logger.info("  %s", line)
+            _task_cache["at"] = 0.0
+        return off
+    except Exception:
+        logger.exception("Couldn't check or fix the launchd job times")
+        return []
 
 
 def stop_at(server: ThreadingHTTPServer, until: time, poll: float = 30.0) -> None:

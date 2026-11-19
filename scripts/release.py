@@ -13,8 +13,12 @@ It then:
   1. moves those notes under "## 1.1.0 — <today>" and sets pyproject.toml's version;
   2. commits just those two files ("Release v1.1.0") and tags v1.1.0;
   3. pushes master and the tag to trading-bot-mac and creates the GitHub
-     Release there, with the Mac installer (Install-Trading-Bots.command)
-     attached.
+     Release there, with the Mac installer attached as
+     Install-Trading-Bots-mac.zip (a zip keeps the .command runnable; a bare
+     download loses its permission to run). docs/SETUP.md links to
+     releases/latest/download/Install-Trading-Bots-mac.zip.
+
+    .venv/bin/python scripts/release.py --build-zip out.zip   # just build the zip (tests)
 
 Every installed copy finds the new tag at its next 8am check, shows it on
 the Bot controls tab and offers Update now (src/tradingbot/updates.py).
@@ -24,6 +28,8 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tempfile
+import zipfile
 from datetime import date
 from pathlib import Path
 
@@ -33,7 +39,8 @@ from tradingbot import updates  # noqa: E402
 
 RELEASE_REPO = "rshukla29/trading-bot-mac"  # public: Mac copies install and update from it
 RELEASE_URL = f"https://github.com/{RELEASE_REPO}.git"
-INSTALLER = REPO / "Install-Trading-Bots.command"  # the Mac installer, attached to every Release
+INSTALLER = REPO / "Install-Trading-Bots.command"  # the Mac installer, attached to every Release (zipped)
+INSTALLER_ZIP = "Install-Trading-Bots-mac.zip"
 
 
 def git(*args: str) -> str:
@@ -43,7 +50,23 @@ def git(*args: str) -> str:
     return out.stdout.strip()
 
 
+def build_installer_zip(out: Path) -> Path:
+    """The installer in a zip, marked executable (Unix mode 755) with Unix
+    line endings, so Finder unzips a .command that runs on double-click."""
+    data = INSTALLER.read_bytes().replace(b"\r\n", b"\n")
+    info = zipfile.ZipInfo(INSTALLER.name, date_time=(2026, 1, 1, 0, 0, 0))
+    info.create_system = 3                       # Unix, so the mode below counts
+    info.external_attr = (0o100755 & 0xFFFF) << 16
+    info.compress_type = zipfile.ZIP_DEFLATED
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr(info, data)
+    return out
+
+
 def main() -> None:
+    if "--build-zip" in sys.argv:
+        print(build_installer_zip(Path(sys.argv[sys.argv.index("--build-zip") + 1])))
+        return
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
     if len(args) != 1 or not updates.parse(args[0]):
@@ -92,7 +115,8 @@ def main() -> None:
     git("commit", "-m", f"Release {tag}\n\n{notes_md}", "--", "pyproject.toml", "CHANGELOG.md")
     git("tag", "-a", tag, "-m", f"{tag}\n\n{notes_md}")
     git("push", RELEASE_URL, "master:master", f"refs/tags/{tag}:refs/tags/{tag}")
-    out = subprocess.run(["gh", "release", "create", tag, str(INSTALLER), "--repo", RELEASE_REPO, "--title", tag,
+    asset = build_installer_zip(Path(tempfile.mkdtemp()) / INSTALLER_ZIP)
+    out = subprocess.run(["gh", "release", "create", tag, str(asset), "--repo", RELEASE_REPO, "--title", tag,
                           "--notes", notes_md, "--verify-tag"], capture_output=True, text=True)
     if out.returncode != 0:
         print(f"Tag pushed, but creating the GitHub Release failed (copies are still notified):\n{out.stderr.strip()}")
