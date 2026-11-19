@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14            # Apple Silicon, Sonoma; uses the Python already on the machine
+          - os: macos-latest        # newest macOS GitHub offers; uses the Python already on the machine
             force_python: "0"
           - os: macos-15            # Apple Silicon, Sequoia; installs python.org's Python like a new Mac
             force_python: "1"

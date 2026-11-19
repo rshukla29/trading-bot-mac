@@ -1,4 +1,4 @@
-# Setup guide: run the trading bots on your own PC
+# Setup guide: run the trading bots on your own Mac
 
 This guide takes you from nothing to bots trading a **practice (paper)
 account** at Interactive Brokers. No programming knowledge needed: every
@@ -16,11 +16,11 @@ setting. Leave it that way.
 
 | | What | Cost |
 |---|---|---|
-| 1 | A Windows 10 or 11 PC that is switched on, and logged in, on market days from 8:00am to 6:00pm New York time | — |
+| 1 | A Mac (Apple Silicon or Intel) with macOS 12 Monterey or newer, switched on and logged in on market days from 8:00am to 6:00pm New York time. A laptop must stay **plugged in with the lid open** (a closed lid puts it to sleep, which stops the bots) | — |
 | 2 | An Interactive Brokers (IBKR) account. It comes with a free paper account | Free to open; IBKR may ask you to fund the real account before you can buy market data |
 | 3 | IBKR market data subscriptions (step 2) | A few dollars a month, depending on IBKR's prices |
 | 4 | Free programs: IBKR's Trader Workstation, and optionally Claude Code. The installer adds Python and Git for you | Free (Claude Code needs a Claude plan) |
-| 5 | The code, from the public GitHub repository **rshukla29/trading-bot-first** (no account needed) | — |
+| 5 | The code, from the public GitHub repository **rshukla29/trading-bot-mac** (no account needed) | — |
 
 ## Step 1. Open the Interactive Brokers account
 
@@ -73,83 +73,103 @@ The installer in step 4 installs **Python** (runs the bots) and **Git**
 
 1. **Trader Workstation (TWS)** (IBKR's trading program; the bots connect
    to it): on interactivebrokers.com go to **Trading → Trader Workstation**
-   and download the Windows version. Install it with its normal installer.
+   and download the **Mac** version. Open the download and follow its
+   installer.
 2. **Claude Code** *(optional)*: writes a plain-English review of each
    trading day at 4:50pm. You can skip it; everything else works without it.
-   To install, open PowerShell (see the box below), paste this line and
-   press Enter:
+   To install, open Terminal (see the box below), paste this line and press
+   Return:
 
    ```
-   irm https://claude.ai/install.ps1 | iex
+   curl -fsSL https://claude.ai/install.sh | bash
    ```
 
-   Then type `claude`, press Enter, and sign in with your Claude account
+   Then type `claude`, press Return, and sign in with your Claude account
    once. Type `/exit` to close it.
 
-> **How to open PowerShell:** press the Windows key, type `PowerShell`, and
-> click **Windows PowerShell**. A window with a blinking cursor opens. To
-> run a command from this guide, copy it, right-click inside the window to
-> paste, and press Enter.
+> **How to open Terminal:** press **Command (⌘) + Space**, type `Terminal`
+> and press Return. A window with a blinking cursor opens. To run a command
+> from this guide, copy it, click in the window, press **⌘V** to paste and
+> press Return.
 
 ## Step 4. Download and run the installer
 
-1. Download **[Install-Trading-Bots.cmd](https://github.com/rshukla29/trading-bot-first/releases/latest/download/Install-Trading-Bots.cmd)**
-   (it's also on the [latest release](https://github.com/rshukla29/trading-bot-first/releases/latest)
+1. Download **[Install-Trading-Bots-mac.zip](https://github.com/rshukla29/trading-bot-mac/releases/latest/download/Install-Trading-Bots-mac.zip)**
+   (it's also on the [latest release](https://github.com/rshukla29/trading-bot-mac/releases/latest)
    page, under **Assets**).
-2. Open your **Downloads** folder and double-click **Install-Trading-Bots**.
-3. Windows may show **"Windows protected your PC"**, because the file isn't
-   signed by a big publisher. Click **More info → Run anyway**. If your
-   browser asks whether to keep the file, choose **Keep**.
-4. Click **OK** on the first message. If Python or Git are missing, it
-   installs them; Windows may ask for permission once: click **Yes**.
-5. It asks for your name (and, optionally, your email). The bots stamp it
-   on the daily reports they save; it stays on your PC.
-6. A window shows each step with a green **OK** (see step 5 for what it
-   does). It takes 5–10 minutes. At the end, press **Enter** to close the
-   window, and click **Yes** to open this guide at step 6.
+2. Open your **Downloads** folder in Finder. Safari unzips it by itself;
+   otherwise double-click the zip. You get **Install-Trading-Bots.command**.
+3. Double-click **Install-Trading-Bots.command**. The first time, macOS
+   blocks it, because the file isn't signed by a registered Apple
+   developer:
+   - macOS 15 Sequoia or newer: it says **"Install-Trading-Bots.command" Not
+     Opened**. Click **Done**, open the Apple menu → **System Settings →
+     Privacy & Security**, scroll down to **"Install-Trading-Bots.command" was
+     blocked** and click **Open Anyway**, enter your Mac password, then
+     **Open Anyway** again.
+   - macOS 14 or older: right-click (or Control-click) the file → **Open** →
+     **Open**.
 
-The code is now in **Documents\trading-bot**. The installer downloads it
-with Git (not as a ZIP): that's how your copy finds out about new versions
-later (see [Getting updates](#getting-updates)).
+   You only do this once.
+4. A Terminal window opens. Click **OK** on the first message.
+5. If Apple's command line tools are missing (they include Git), a macOS
+   window asks to install them: click **Install**, then **Agree**, and wait
+   (5–15 minutes). The installer carries on by itself.
+6. If Python is missing, it downloads Python from python.org and macOS asks
+   for your **Mac password** to install it.
+7. It asks for your name (and, optionally, your email). The bots stamp it
+   on the daily reports they save; it stays on your Mac.
+8. The window shows each step with a green **OK** (see step 5 for what it
+   does). Near the end macOS asks for your **Mac password** once more, to
+   set a weekday wake-up. At the end, click **Yes** to open this guide at
+   step 6, and press Return to close the window.
+
+The code is now in the **trading-bot** folder in your home folder (in
+Finder: **Go → Home**). The installer downloads it with Git (not as a ZIP):
+that's how your copy finds out about new versions later (see [Getting
+updates](#getting-updates)). It isn't in Documents on purpose: macOS often
+syncs Documents to iCloud, which would move the bots' files away while they
+run.
 
 If you see a red **PROBLEM**, the message says what to fix. Fix it and
 double-click the installer again. Running it twice is safe: it keeps your
 download, your settings and your trades.
 
-> **Prefer to do it by hand?** Install Python 3.11 or newer from
-> **python.org** (tick **"Add python.exe to PATH"**) and Git from
-> **git-scm.com**, then in PowerShell:
-> `cd $HOME\Documents` and
-> `git clone https://github.com/rshukla29/trading-bot-first.git trading-bot`,
-> and run the installer as in step 5.
+> **Prefer to do it by hand?** In Terminal: `xcode-select --install`
+> (Apple's tools, with Git), install Python 3.12 from **python.org**, then
+> `git clone https://github.com/rshukla29/trading-bot-mac.git ~/trading-bot`
+> and `bash ~/trading-bot/scripts/install.sh`.
 
 ## Step 5. What the installer does
 
-The one-click installer ends by running **Documents\trading-bot\scripts\install.ps1**.
-You can also run that on its own at any time (right-click it → **Run with
-PowerShell**). It:
+The one-click installer ends by running **trading-bot/scripts/install.sh**.
+You can also run that on its own at any time (in Terminal:
+`bash ~/trading-bot/scripts/install.sh`). It:
 
 - checks Python and Git;
 - installs what the bots need (a few minutes);
 - creates the settings file `.env` (an existing one is kept);
 - runs the bots' self-tests (all must pass);
-- creates the scheduled tasks that start each bot at the right time on
+- creates the *launchd jobs* that start each bot at the right time on
   weekdays. The times are New York time, listed in
-  **scripts\schedule.json**, and they automatically follow the clock
-  when it changes for daylight saving;
-- sets up the **control server** (task `BotControlServer`) behind the
+  **scripts/schedule.json**, converted to your Mac's clock;
+- sets up the **control server** (job `BotControlServer`) behind the
   dashboard's Start / Pause / Stop buttons. Monday to Friday at 8am it
   rebuilds the dashboard and opens it in your browser (if the dashboard is
   still open from the day before, that same tab updates instead); it
-  stops at 6pm and leaves the browser open;
-- puts a **Trading dashboard** shortcut on your desktop.
+  keeps the Mac awake until it stops at 6pm, and leaves the browser open;
+- sets your Mac to **wake up at 7:50am New York time** on weekdays, so it's
+  awake for the 8am start (this replaces any other repeating wake-up you
+  set with Energy Saver or `pmset`);
+- puts a **Trading dashboard** app on your Desktop.
 
 ## Step 6. Check the settings file
 
-1. In File Explorer, open **Documents\trading-bot**. Right-click the file
-   **.env** → **Open with → Notepad**. (If you don't see it, click **View →
-   Show → File name extensions / Hidden items**.)
-2. Check these lines, then save (Ctrl+S):
+1. In Finder, choose **Go → Home** and open the **trading-bot** folder.
+   The settings file **.env** is hidden: press **⌘ + Shift + .** (full
+   stop) to show hidden files.
+2. Right-click **.env** → **Open With → TextEdit**. Check these lines, then
+   save (**⌘S**):
 
    | Line | What it should say |
    |---|---|
@@ -165,10 +185,11 @@ you want to change them later.
 
 ## Step 7. Set up Trader Workstation (TWS)
 
-1. Start TWS and log in with your **paper** username (from step 1). TWS
-   marks the window as a paper (simulated) account, and the account
-   number shown starts with `DU`.
-2. Click **File → Global Configuration → API → Settings** and set:
+1. Start TWS (in Applications) and log in with your **paper** username
+   (from step 1). TWS marks the window as a paper (simulated) account, and
+   the account number shown starts with `DU`.
+2. Open **Global Configuration** (the gear icon at the top right of TWS,
+   or **File → Global Configuration**), go to **API → Settings** and set:
    - **Enable ActiveX and Socket Clients**: ticked;
    - **Read-Only API**: **not** ticked (the bots must be able to place
      orders);
@@ -181,41 +202,44 @@ you want to change them later.
    with `Error 383`.
 4. Open **Lock and Exit** and set **Auto restart** to a time outside market
    hours, such as 11:45 PM. Click **OK**.
-5. Leave TWS open. The bots can only work while it's running and logged
+5. If macOS asks whether TWS may accept incoming network connections, click
+   **Allow**.
+6. Leave TWS open. The bots can only work while it's running and logged
    in to paper.
 
 ## Step 8. First check
 
-With TWS running and logged in to paper, open PowerShell and paste:
+With TWS running and logged in to paper, open Terminal and paste:
 
 ```
-cd $HOME\Documents\trading-bot
-.venv\Scripts\python.exe -m tradingbot.run_snapshot premarket
+cd ~/trading-bot
+.venv/bin/python -m tradingbot.run_snapshot premarket
 ```
 
-After a few seconds a report appears in **Documents\trading-bot\reports**.
+After a few seconds a report appears in **trading-bot/reports**.
 Double-click it to open it in your browser. It should show your `DU…`
 account and its balance. If you get an error instead, see
 [When something goes wrong](#when-something-goes-wrong).
 
-Then double-click **Trading dashboard** on your desktop, open the **Bot
+Then double-click **Trading dashboard** on your Desktop, open the **Bot
 health** tab and press **Run checks now**. In about 20 seconds it checks
-everything the bots need: safe settings, the scheduled tasks, that the PC
-won't sleep, the TWS connection and paper account, live prices for SPY,
+everything the bots need: safe settings, the launchd jobs, the weekday
+wake-up, the TWS connection and paper account, live prices for SPY,
 stocks and options (your market data subscriptions), price history, that
 your real account isn't logged in elsewhere, and that TWS accepts the bots'
 order size. Each problem says how to fix it; fix it and press **Run checks
 now** again until it says **Ready to trade**. (It never places an order.)
 
-> Without the dashboard, the same check in PowerShell:
-> `.venv\Scripts\python.exe -m tradingbot.run_readiness`
+> Without the dashboard, the same check in Terminal:
+> `cd ~/trading-bot && .venv/bin/python -m tradingbot.run_readiness`
 
 You're set. The bots start by themselves on the next weekday.
 
 ## Every trading day
 
 **Before 8:00am New York time:**
-- the PC is on and you're logged in to Windows (don't let it sleep);
+- the Mac is on and you're logged in. It wakes itself at 7:50am on
+  weekdays; a laptop must be plugged in with the lid open;
 - TWS is open and logged in to the **paper** account. About once a week,
   usually Sundays, TWS needs a full log-in again;
 - you are **not** logged in to your **real** account in TWS, IBKR Desktop
@@ -226,35 +250,36 @@ You're set. The bots start by themselves on the next weekday.
 
 | Time (New York) | What you'll see |
 |---|---|
-| 8:00am | The premarket report is saved, and the dashboard opens in your browser on the **Bot controls** tab. If yesterday's dashboard tab is still open, it updates itself instead of opening a second one. The readiness check runs (if TWS isn't logged in yet, it and the premarket report wait up to 10 minutes for it): the top right corner says **Ready to trade** or how many problems there are, and if something is wrong Windows shows a notification. Click it (or the **Bot health** tab) for the fix |
+| 7:50am | The Mac wakes up |
+| 8:00am | The premarket report is saved, and the dashboard opens in your browser on the **Bot controls** tab. If yesterday's dashboard tab is still open, it updates itself instead of opening a second one. The readiness check runs (if TWS isn't logged in yet, it and the premarket report wait up to 10 minutes for it): the top right corner says **Ready to trade** or how many problems there are, and if something is wrong macOS shows a notification. Click the **Bot health** tab for the fix |
 | 9:25am – 4:00pm | The bots trade. Check the Bot controls tab any time: each strategy shows Running / Paused / Stopped, today's profit or loss and what's open |
 | 4:30pm | The postmarket report is saved and the open dashboard updates itself |
 | 4:50pm | With Claude Code, a written review appears on the dashboard |
-| 6:00pm | The control server stops. The dashboard stays open but its buttons are offline until 8am the next weekday (or until you double-click **Trading dashboard**) |
+| 6:00pm | The control server stops and the Mac may sleep again. The dashboard stays open but its buttons are offline until 8am the next weekday (or until you double-click **Trading dashboard**) |
 
 The dashboard shows the account value, profit and loss per day, week,
 month and strategy, every trade, the open positions, links to every report,
 the written reviews and whether each bot ran cleanly. To refresh it by hand,
-double-click **Trading dashboard** on your desktop.
+double-click **Trading dashboard** on your Desktop.
 
 The newest report in the **reports** folder (inside the folder named in
 `REPORTS_DIR`) has the full detail for the day: each strategy's profit and
 loss, every trade with its buy and sell prices, and the open positions with
-live prices. Written reviews are saved in **analysis\daily\YEAR\MONTH\DAY**.
+live prices. Written reviews are saved in **analysis/daily/YEAR/MONTH/DAY**.
 
 Market holidays need nothing: the bots find the market closed and stop.
 
 ### Starting, pausing and stopping a strategy
 
 The dashboard opens by itself at 8am on weekdays (or open
-**http://127.0.0.1:8765** in your browser, or use the desktop shortcut) and
+**http://127.0.0.1:8765** in your browser, or use the Desktop app) and
 starts on the **Bot controls** tab. An open dashboard updates itself when
 new data arrives (8am and 4:30pm). Each strategy has three buttons;
 the bar at the top does the same for all of them at once.
 
 **At the weekend, in the evening or before 8am** (for example to press
 **Start all** on a Sunday so the bots trade on Monday), double-click
-**Trading dashboard** on your desktop. It starts the control server, so
+**Trading dashboard** on your Desktop. It starts the control server, so
 the dashboard opens with working buttons. Make your choice and close the
 tab; the server closes itself about 30 minutes later. Nothing trades
 until the bots' usual times on the next weekday.
@@ -271,7 +296,7 @@ until the bots' usual times on the next weekday.
 
 A choice stays until you press **Start** again; it doesn't reset
 overnight. The expiry guard and step stop protect open positions and
-can't be switched off. The buttons only work from the dashboard on this PC
+can't be switched off. The buttons only work from the dashboard on this Mac
 (http://127.0.0.1:8765): other computers and other websites can't use them.
 
 Good to know:
@@ -286,16 +311,15 @@ Good to know:
   before 9:30am and **Start all** once prices are back. **Bot health → Run
   checks now** tells you straight away whether they're back.
 - If the Bot controls tab says it **can't reach the control server**,
-  double-click **Trading dashboard** on your desktop. If that doesn't help,
-  start the `BotControlServer` task in Task Scheduler (right-click → Run)
-  or run **scripts\install.ps1** again.
-- If it says **a bot's start time is off**, run
-  **scripts\register_tasks.ps1** (right-click → Run with PowerShell).
+  double-click **Trading dashboard** on your Desktop. If that doesn't help,
+  double-click the installer again.
+- If it says **a bot's start time is off**, the control server corrects it
+  at its next 8am start; to fix it now, double-click the installer again.
 
 ### Setting how much each strategy trades (Rules tab)
 
 Open the **Rules** tab on the dashboard. You can only change it when the
-dashboard was opened with **Trading dashboard** on your desktop.
+dashboard was opened with **Trading dashboard** on your Desktop.
 
 1. Type the **capital the bots trade with**, for example 25000. Every
    "% of capital" rule is a % of this amount. Leave it blank to use the
@@ -323,20 +347,31 @@ If you allow more than 10 contracts, raise TWS's order size limit to match
 
 ### Changing when a bot runs
 
-The times are in **scripts\schedule.json** (New York time). Open it with
-Notepad, change a time, save, then right-click
-**scripts\register_tasks.ps1** → **Run with PowerShell**. The tasks follow
-your PC's clock, so daylight-saving changes need nothing. (If your PC isn't
-on New York time and your clocks change on different dates than the US,
-run register_tasks.ps1 again after each change; the Bot controls tab warns
-you when a time is off.)
+The times are in **scripts/schedule.json** (New York time). Open it with
+TextEdit, change a time, save, then in Terminal:
 
-### Turning off a scheduled task
+```
+cd ~/trading-bot
+.venv/bin/python -m tradingbot.macos register
+```
 
-Press the Windows key, type **Task Scheduler**, open it, and click **Task
-Scheduler Library**. The bots' tasks end in **Bot** (for example
-`ORBTradingBot`). Right-click a task → **Disable** to stop it, **Enable**
-to start it again. To stop everything for a day, it's enough to close TWS.
+The jobs use your Mac's clock. If your Mac isn't on New York time and your
+clocks change for daylight saving on different dates than the US, the
+control server notices at 8am and corrects the times by itself.
+
+### Turning off a scheduled job
+
+The easiest way is the dashboard: **Stop** on a strategy keeps it off until
+you press **Start**. To switch a job off completely, in Terminal (the jobs
+are named after the bots, for example `ORBTradingBot`):
+
+```
+launchctl disable gui/$(id -u)/com.tradingbots.ORBTradingBot
+```
+
+Use `enable` instead of `disable` to turn it back on. To see every job and
+its next run: `cd ~/trading-bot && .venv/bin/python -m tradingbot.macos status`.
+To stop everything for a day, it's enough to quit TWS.
 
 ### Starting over with a new paper account
 
@@ -369,7 +404,7 @@ its own.
 You don't need to watch for updates. When the owner publishes a new
 version:
 
-1. At 8am the next weekday, Windows shows a notification: **Trading bots
+1. At 8am the next weekday, macOS shows a notification: **Trading bots
    update: Version X is available**. The **Bot controls** tab shows a
    blue banner with what's new, and a small blue **Update to vX** button
    in its top right corner, next to the version you have.
@@ -384,26 +419,25 @@ banner says what happened.
 
 The button stays greyed out while the bots might be trading (weekdays 8am
 to 5:15pm). The version you have is shown in the top right corner of the
-Bot controls tab (for example **v1.0.0**); point at it to see when it last
+Bot controls tab (for example **v1.2.0**); point at it to see when it last
 checked for updates.
 
-> If the banner says **files were edited on this PC**, you (or someone)
+> If the banner says **files were edited on this Mac**, you (or someone)
 > changed one of the bots' code files. Settings belong in `.env`, which is
 > never touched. Ask for help before undoing the edit.
 
-To update by hand instead, open PowerShell and paste:
+To update by hand instead, in Terminal:
 
 ```
-cd $HOME\Documents\trading-bot
-powershell -ExecutionPolicy Bypass -File scripts\update.ps1
+bash ~/trading-bot/scripts/update.sh
 ```
 
 ## Checklist
 
 - [ ] IBKR account open; paper username and `DU…` account ID written down
 - [ ] Four market data subscriptions, Non-Professional, shared with paper
-- [ ] TWS installed; Claude Code optional
-- [ ] Install-Trading-Bots.cmd run from the release page, finished with all green OKs (code in Documents\trading-bot)
+- [ ] TWS (Mac version) installed; Claude Code optional
+- [ ] Install-Trading-Bots run from the release page's zip, finished with all green OKs (code in ~/trading-bot)
 - [ ] `.env` checked: `LIVE_TRADING=false`, your own stocks removed from the watchlists
 - [ ] TWS logged in to paper, API enabled, Read-Only off, port 7497, 127.0.0.1 trusted
 - [ ] TWS order size limit at least 10 (Presets → Precautionary Settings)
@@ -411,13 +445,14 @@ powershell -ExecutionPolicy Bypass -File scripts\update.ps1
 - [ ] First check report shows your `DU…` account
 - [ ] Bot health → Run checks now says **Ready to trade**
 - [ ] Rules tab: capital and each strategy's size set for your account, and saved
+- [ ] Laptop: plugged in, lid open on market days
 - [ ] http://127.0.0.1:8765 opens the dashboard on a weekday between 8am and 6pm
 
 ## When something goes wrong
 
-Each bot keeps a diary in **Documents\trading-bot\logs**, one file per bot
-per day (for example `orb_2026-11-02.log`). Open it with Notepad and look
-for the message below.
+Each bot keeps a diary in **trading-bot/logs**, one file per bot per day
+(for example `orb_2026-11-02.log`). Open it with TextEdit (or the Console
+app) and look for the message below.
 
 | You see | What it means | What to do |
 |---|---|---|
@@ -428,25 +463,26 @@ for the message below.
 | `Error 10168`, `2186` or `354` ... not subscribed | The paper account isn't receiving the shared market data yet (common right after creating a paper account) | Step 2, items 4 and 5: sharing on for this paper user, then log TWS out and in. Press **Pause all** until it works |
 | `Error 383 ... size exceeds the Size Limit` | TWS's precautionary order size limit is lower than the order | Step 7, item 3: raise the size limit to at least 10, or to the largest max contracts on the Rules tab |
 | The Rules tab says **some saved rules couldn't be used**, or the readiness check fails **Trading rules** | A saved rule is outside its safe range (or the file was edited by hand). The bots use the default for that rule | Open the Rules tab, fix or reset the rule it names, and press **Save rules** |
-| The Rules tab's boxes are greyed out | The dashboard was opened as a file, or the control server is off | Double-click **Trading dashboard** on your desktop |
+| The Rules tab's boxes are greyed out | The dashboard was opened as a file, or the control server is off | Double-click **Trading dashboard** on your Desktop |
 | A ⚠ on a Rules card says the bot **won't trade** | At your capital, the size buys less than one contract (or share), or the option costs more than the max premium | Raise the size or the capital, or the max premium |
 | `Error 10197 ... competing live session` | Your real account is logged in somewhere | Log out of the real account in TWS, IBKR Desktop and the mobile app |
 | `Error 162 ... different IP address` | Another login took over the price feed | Same as above |
-| Bot controls says **a bot's start time is off** | A task's time drifted from `scripts\schedule.json` (e.g. after a daylight-saving change) | Run **scripts\register_tasks.ps1** (right-click → Run with PowerShell) or the installer again |
-| The dashboard didn't open at 8am | The PC was asleep or off, or `BotControlServer` is disabled | Open http://127.0.0.1:8765; if it doesn't load, right-click the `BotControlServer` task → Run, or run the installer again |
-| Bot controls says it **can't reach the control server** | The server is off (outside 8am–6pm on weekdays, or it stopped) | Double-click **Trading dashboard** on your desktop: it starts the server and reopens the dashboard. Still not working: run the `BotControlServer` task |
-| The top right corner says **N problems**, or Windows says **Trading bots: not ready** | The readiness check found something missing (prices, TWS, a task…) | Open the **Bot health** tab: each failed line says how to fix it. Fix it, then press **Run checks now** |
+| Bot controls says **a bot's start time is off** | A job's time drifted from `scripts/schedule.json` (e.g. after a daylight-saving change) | The control server corrects it at 8am; to fix it now, double-click the installer again |
+| Nothing ran in the morning, or the dashboard didn't open at 8am | The Mac was asleep (laptop lid closed, or unplugged), off, or logged out | Keep it plugged in with the lid open and logged in. Bot health → **Mac wakes for the bots** must pass; if it doesn't, double-click the installer again (it sets the wake-up) |
+| Bot controls says it **can't reach the control server** | The server is off (outside 8am–6pm on weekdays, or it stopped) | Double-click **Trading dashboard** on your Desktop: it starts the server and reopens the dashboard. Still not working: double-click the installer again |
+| The top right corner says **N problems**, or macOS says **Trading bots: not ready** | The readiness check found something missing (prices, TWS, a job…) | Open the **Bot health** tab: each failed line says how to fix it. Fix it, then press **Run checks now** |
 | **Update now** is greyed out | The bots might be trading (weekdays 8am–5:15pm New York) | Press it after 5:15pm, at the weekend or before 8am |
-| The update banner says **files were edited on this PC** | One of the bots' code files was changed by hand | Settings belong in `.env`. Ask the owner for help before undoing the edit |
-| The update banner says the **update failed** | Usually no internet, or a problem in the new version | You're still on the old version and nothing else changed. Try again later; if it keeps failing, send the owner the newest `logs\update_….log` |
-| No update notice, though the owner released one | Your copy checks when the control server starts (8am on weekdays), or it was installed before version 1.0.0, or downloaded as a ZIP | Double-click **Trading dashboard**. Installed before 1.0.0: run `git pull` and the installer once. ZIP: run the one-click installer instead (step 4) |
-| `Error 326 ... client id is already in use` | The same bot was started twice | Close the extra window; it fixes itself the next day |
+| The update banner says **files were edited on this Mac** | One of the bots' code files was changed by hand | Settings belong in `.env`. Ask the owner for help before undoing the edit |
+| The update banner says the **update failed** | Usually no internet, or a problem in the new version | You're still on the old version and nothing else changed. Try again later; if it keeps failing, send the owner the newest `logs/update_….log` |
+| No update notice, though the owner released one | Your copy checks when the control server starts (8am on weekdays) | Double-click **Trading dashboard** |
+| `Error 326 ... client id is already in use` | The same bot was started twice | It fixes itself the next day |
 | Orders are rejected as "read-only" | TWS's Read-Only API box is ticked | Untick it (step 7) |
-| A log file is empty or missing | The task didn't start, or the installer didn't finish | Double-click **Install-Trading-Bots** again (or run **scripts\install.ps1**) |
+| A log file is empty or missing | The job didn't start, or the installer didn't finish | Double-click **Install-Trading-Bots** again (or `bash ~/trading-bot/scripts/install.sh` in Terminal) |
 | `Claude review failed` in the review log | Claude Code isn't installed or not signed in | Step 3, item 2, or ignore it if you don't use the review |
-| The installer says Python or Git didn't install, or App Installer (winget) isn't available | Older Windows 10 without App Installer, or no internet | Install **App Installer** from the Microsoft Store (the installer opens it), or install Python and Git by hand (the box in step 4), then double-click the installer again |
-| The installer says Python isn't found (installed by hand) | "Add python.exe to PATH" wasn't ticked | Run the Python installer again, choose **Modify**, tick **Add Python to environment variables**, then run the installer again |
-| **Windows protected your PC** when opening the installer | The file isn't signed by a big publisher | Click **More info → Run anyway** |
+| **"Install-Trading-Bots.command" Not Opened** / **can't be opened because Apple cannot check it** | macOS blocks downloaded files from unregistered developers | Step 4, item 3: System Settings → Privacy & Security → **Open Anyway** (macOS 14 or older: right-click → Open) |
+| **could not be executed because you do not have appropriate access privileges** | The .command was downloaded on its own instead of in the zip, so it lost its permission to run | Download **Install-Trading-Bots-mac.zip** (step 4), or in Terminal: `bash ~/Downloads/Install-Trading-Bots.command` |
+| The installer waits for the **command line tools** for a long time | Apple's install window is waiting for you, or still downloading | Look for the macOS window and click **Install**; it can take 15 minutes. If you closed it, run the installer again |
+| The installer says **Installing Python failed** | The Mac password window was cancelled, or no internet | Run the installer again and enter your Mac password, or install Python 3.12 from python.org yourself |
 
 ## Glossary
 
@@ -455,7 +491,7 @@ for the message below.
   sold. Its ID starts with `DU`.
 - **Real (live) account:** your actual brokerage account with real money.
   The bots never use it.
-- **TWS (Trader Workstation):** IBKR's trading program for your PC. The
+- **TWS (Trader Workstation):** IBKR's trading program for your Mac. The
   bots talk to IBKR through it, so it must be open.
 - **API:** the doorway TWS opens so other programs (the bots) can place
   orders and read prices. Switched on in step 7.
@@ -467,22 +503,22 @@ for the message below.
   install it; you never write any.
 - **Git / GitHub:** Git keeps track of versions of files; GitHub is the
   website where the code is stored. The bots also use Git to save each
-  day's reports on your PC, and to check for new versions.
-- **Version / release:** a numbered edition of the bots, such as 1.0.0.
+  day's reports on your Mac, and to check for new versions.
+- **Version / release:** a numbered edition of the bots, such as 1.2.0.
   The owner publishes a new one when something is improved; yours is shown
   in the top right corner of the Bot controls tab.
-- **PowerShell:** a Windows window where you type or paste commands.
-- **`.env` file:** the bots' settings file. It stays on your PC and is
+- **Terminal:** the Mac window where you type or paste commands.
+- **`.env` file:** the bots' settings file. It stays on your Mac and is
   never uploaded.
-- **Scheduled task (Task Scheduler):** a Windows feature that starts a
-  program at a set time. The installer creates one per bot.
-- **Control server:** a small program on your PC (weekdays 8am–6pm, or
-  whenever you double-click Trading dashboard) that
-  shows the dashboard at http://127.0.0.1:8765 and carries out the Start /
-  Pause / Stop buttons. Only this PC can use it.
+- **launchd job:** macOS's way of starting a program at a set time (like
+  an alarm for programs). The installer creates one per bot.
+- **Control server:** a small program on your Mac (weekdays 8am–6pm, or
+  whenever you double-click Trading dashboard) that shows the dashboard at
+  http://127.0.0.1:8765 and carries out the Start / Pause / Stop buttons.
+  Only this Mac can use it.
 - **Bot controls:** the dashboard tab with the Start / Pause / Stop buttons.
 - **Readiness check:** the list at the top of the **Bot health** tab that
-  checks everything the bots need (TWS, prices, tasks, settings). Runs at
+  checks everything the bots need (TWS, prices, jobs, settings). Runs at
   8am and whenever you press **Run checks now**.
 - **Strategy:** a set of rules for when to buy and sell. The README
   describes each one.

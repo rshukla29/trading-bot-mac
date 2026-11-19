@@ -1,9 +1,9 @@
 # trading-bot
 
-> **macOS version (work in progress).** This repo is the Mac copy of the trading
-> bots, kept separate from the Windows version (rshukla29/trading-bot-first).
-> The Mac installer, scheduler and updater are being built; until then the setup
-> steps below still describe Windows. Mac releases are published only from here.
+> **macOS version.** This repo is the Mac copy of the trading bots, kept
+> separate from the Windows version (rshukla29/trading-bot-first): its own
+> installer, launchd scheduling, updater and releases. Strategy changes are
+> copied over from the Windows repo when wanted; nothing flows back.
 
 Automated trading bots for Interactive Brokers (via `ib_async`): seven
 independent strategies covering stocks and SPY options, plus daily,
@@ -29,12 +29,13 @@ needed.
 
 Run any of them manually with `python -m tradingbot.<entrypoint>`.
 
-### Daily schedule (ET, Mon–Fri — Windows Task Scheduler)
+### Daily schedule (ET, Mon–Fri — macOS launchd)
 
 The times live in one file, [scripts/schedule.json](scripts/schedule.json)
-(New York time). [scripts/register_tasks.ps1](scripts/register_tasks.ps1)
-creates the tasks from it (the installer runs it), and the Bot controls tab
-warns if a task's next run ever drifts from it (see [Scheduling](#4-scheduling)).
+(New York time). `python -m tradingbot.macos register`
+([macos.py](src/tradingbot/macos.py)) creates one launchd job per task from
+it (the installer runs it), and the Bot controls tab warns if a job's next
+run ever drifts from it (see [Scheduling](#4-scheduling)).
 
 | Time | Task | What happens |
 |---|---|---|
@@ -406,7 +407,7 @@ only if it agrees → bracket order → stop / target / 3:55 flatten.**
 
 - MA-crossover and RSI(2) watchlists don't overlap; RSI(2)'s S&P 500
   screen excludes the MA watchlist. Both use client ID 1, so they run one after
-  the other in the same 4:30pm task (`run_rsi2_scheduled.ps1`), never at
+  the other in the same 4:30pm job (`RSI2TradingBot` in run_task.py), never at
   the same time.
 - **Manual trades are never touched.** MA-crossover and RSI(2) record
   every position they open (`stock_ownership` table) and only manage
@@ -481,9 +482,8 @@ by itself at 8am on weekdays on the **Bot controls** tab. It's rebuilt:
 
 - at 8:00am by the control server and by the premarket snapshot;
 - at 4:30pm by the postmarket snapshot (and after the 4:50pm review);
-- whenever you double-click the **Trading dashboard** desktop shortcut
-  ([scripts/open_dashboard.ps1](scripts/open_dashboard.ps1) →
-  `run_dashboard --open`), which always opens it through the server: if
+- whenever you double-click the **Trading dashboard** app on the Desktop
+  (built by install.sh with `osacompile`; it runs `run_dashboard --open`), which always opens it through the server: if
   the server isn't running it starts one in the background
   (`--open --now --idle 30`), so the buttons work at the weekend too. Only
   if that fails does it open the file.
@@ -567,20 +567,21 @@ must carry this server's Host and Origin, a JSON body and an
 `X-Bot-Control: 1` header, so another website open in your browser can't
 press the buttons (cross-site requests and DNS rebinding are refused).
 
-**Hours.** The `BotControlServer` task runs it Monday–Friday from 8am (and
-at Windows logon, if that's between 8am and 6pm) to 6pm New York time
-([scripts/run_control_server.ps1](scripts/run_control_server.ps1); by hand:
+**Hours.** The `BotControlServer` launchd job runs it Monday–Friday from 8am
+(and at log-in, if that's between 8am and 6pm) to 6pm New York time, under
+`caffeinate -i` so the Mac doesn't sleep meanwhile, restarted if it crashes
+([run_task.py](src/tradingbot/run_task.py); by hand:
 `python -m tradingbot.run_control_server [--open] [--now] [--until 18:00] [--idle 30]`).
 Outside those hours each bot keeps the last mode, and the **Trading
-dashboard** desktop shortcut starts a server on demand: `--now` opens the
+dashboard** app starts a server on demand: `--now` opens the
 page straight away, and `--idle 30` stops it after 30 minutes with no
 dashboard tab checking in, except during Mon–Fri 8am–6pm, when it stands
 in for the scheduled one (whose 8am start then finds the port taken,
 rebuilds the dashboard and lets an open tab refresh itself). `/api/ping`
 answers "up?" without counting as a page checking in.
 
-**Load.** About 90 MB of memory (it builds the dashboard in-process). The task list (one PowerShell call, about
-0.5 s of CPU) is cached for 60 s. A dashboard tab in the background skips
+**Load.** About 90 MB of memory (it builds the dashboard in-process). The job list (two `launchctl`
+calls) is cached for 60 s. A dashboard tab in the background skips
 the 5-second refresh and sends one light request a minute (`?light=1`, the
 dashboard build only) so the 8am start can update it.
 
@@ -674,7 +675,7 @@ trade hours later. [readiness.py](src/tradingbot/readiness.py), run by
 (IBKR client `READINESS_CLIENT_ID`, 88), results in `data/readiness.json`.
 
 **When.** At each control server start, so 8am on weekdays: after the
-update check, with a Windows notification if anything fails. The 8am run
+update check, with a macOS notification if anything fails. The 8am run
 waits up to 10 minutes for TWS to accept connections (on Mondays it often
 still needs its weekly log-in), so it doesn't report a problem that fixes
 itself a minute later. Also from
@@ -688,13 +689,13 @@ plain words.
 
 | Group | Check | Fails when |
 |---|---|---|
-| This PC | Safe settings | `LIVE_TRADING=true`, or a live port (7496 / 4001) |
-| This PC | Trading rules | a saved rule on the Rules tab can't be used (warning when the capital is above the account value) |
-| This PC | Trade diary | `DB_PATH`'s folder is missing or not writable |
-| This PC | Scheduled tasks | a task from `schedule.json` is missing, disabled, or its next run is off (the drift check) |
-| This PC | PC stays awake | it sleeps on mains power (warning; from `powercfg`) |
-| This PC | Claude Code | `claude` not found (warning: the review is optional) |
-| This PC | Version | the update check failed, or a newer release exists (warning) |
+| This Mac | Safe settings | `LIVE_TRADING=true`, or a live port (7496 / 4001) |
+| This Mac | Trading rules | a saved rule on the Rules tab can't be used (warning when the capital is above the account value) |
+| This Mac | Trade diary | `DB_PATH`'s folder is missing or not writable |
+| This Mac | Scheduled tasks | a launchd job from `schedule.json` is missing, disabled, or its next run is off (the drift check) |
+| This Mac | Mac wakes for the bots | no repeating weekday wake-up in `pmset -g sched` (warning; the installer sets one for 7:50am New York) |
+| This Mac | Claude Code | `claude` not found (warning: the review is optional) |
+| This Mac | Version | the update check failed, or a newer release exists (warning) |
 | IBKR | TWS connection | can't connect to `IBKR_HOST:IBKR_PORT` (the rest are then skipped) |
 | IBKR | Paper account | not a `DU…` account, or not the one in `DB_PATH` / `REPORTS_DIR` |
 | IBKR | SPY, Nasdaq (AAPL), NYSE (JPM) prices | IBKR answers 354 / 10089 / 10090 / 10091 / 10167 / 10168 / 2186, or only delayed data; in market hours, no prices in 3 s (warning) |
@@ -717,7 +718,7 @@ Tests: [tests/test_readiness.py](tests/test_readiness.py).
 
 ## Daily review (4:50pm)
 
-`DailyReviewBot` runs [scripts/run_daily_review_scheduled.ps1](scripts/run_daily_review_scheduled.ps1):
+`DailyReviewBot` runs `run_task.py`'s daily review ([run_task.py](src/tradingbot/run_task.py)):
 
 1. [run_daily_review.py](src/tradingbot/run_daily_review.py) gathers the
    day's facts (read-only): account and closed fills (avg bought/sold
@@ -767,29 +768,31 @@ The prompt is [scripts/daily_review_prompt.md](scripts/daily_review_prompt.md).
 
 **New here?** Follow [docs/SETUP.md](docs/SETUP.md): a step-by-step guide,
 no programming needed, from opening the IBKR account to the first report.
-The one-click installer [Install-Trading-Bots.cmd](Install-Trading-Bots.cmd)
-(attached to every GitHub Release by `scripts/release.py`) installs Python
-and Git with winget if they're missing, clones the repo into
-Documents\trading-bot, asks for the Git name in a pop-up and runs
-`install.ps1`. Double-click it again to repair; it keeps the clone and `.env`.
-[scripts/install.ps1](scripts/install.ps1) does steps 1, 2 and 4 below in
-one go (packages, `.env`, tests, scheduled tasks in your PC's time zone).
-The steps below are the same thing by hand.
+The one-click installer [Install-Trading-Bots.command](Install-Trading-Bots.command)
+(attached to every GitHub Release as `Install-Trading-Bots-mac.zip` by
+`scripts/release.py`; the zip keeps it executable) installs Apple's command
+line tools (Git) and python.org's Python 3.12 if they're missing, clones the
+repo into `~/trading-bot` (not Documents, which iCloud may sync), asks for
+the Git name in a dialog and runs [scripts/install.sh](scripts/install.sh).
+That does steps 1, 2 and 4 below in one go (packages, `.env`, tests, launchd
+jobs in your Mac's time zone, a 7:50am weekday wake-up via `pmset`, and the
+Desktop app). Double-click it again to repair; it keeps the clone and
+`.env`. The steps below are the same thing by hand.
 
 ### 1. Python environment
 
 Requires Python 3.11+. From `trading-bot/`:
 
 ```
-python -m venv .venv
-.venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
 ### 2. Configure
 
 ```
-copy .env.example .env
+cp .env.example .env
 ```
 
 Edit `.env`: confirm `IBKR_PORT` matches your TWS/Gateway paper port (7497
@@ -848,25 +851,29 @@ reports folder.
 
 ### 4. Scheduling
 
-Each scheduled bot has a wrapper in [scripts/](scripts/)
-(`run_*_scheduled.ps1`) registered in Windows Task Scheduler; logs go to
-`logs/<bot>_<date>.log`. The wrappers find the repo folder themselves, so
-the repo can live anywhere.
+Each entry in [scripts/schedule.json](scripts/schedule.json) becomes a
+launchd job (a LaunchAgent, `~/Library/LaunchAgents/com.tradingbots.<name>.plist`)
+that runs `python -m tradingbot.run_task <name>`
+([run_task.py](src/tradingbot/run_task.py)); logs go to
+`logs/<bot>_<date>.log`, and anything launchd itself prints to
+`logs/launchd_<name>.log`. Jobs run from the repo folder, wherever it is.
 
-- **One source of truth:** [scripts/schedule.json](scripts/schedule.json)
-  lists every task, its New York time and its script. To change a time,
-  edit it there and run
-  `powershell -ExecutionPolicy Bypass -File scripts\register_tasks.ps1`
-  (the installer runs the same script). Tasks whose script isn't in this
-  copy of the repo are skipped.
-- **Daylight saving:** [register_tasks.ps1](scripts/register_tasks.ps1)
-  converts each New York time to the PC's clock and stores it **without a
-  UTC offset**, so the task follows the clock through every change.
-  (`New-ScheduledTaskTrigger` on its own stores today's offset, e.g.
-  `09:25-04:00`, which pins the task to UTC: after the 2026-11-01 change six
-  bots ran an hour early.) A PC outside New York time whose clock changes on
-  different dates than the US needs the script run again after each change.
-- **Drift warning:** the control server compares each task's next run with
+- **One source of truth:** `schedule.json` lists every task and its New
+  York time. To change a time, edit it there and run
+  `.venv/bin/python -m tradingbot.macos register` (the installer and updates
+  run the same). `macos status` lists each job's state and next run;
+  `macos remove` deletes them all.
+- **Time zones:** each New York time becomes this Mac's wall-clock time and
+  weekday (a Mac in India gets the 4:50pm review at 3:20am Tuesday–Saturday).
+  launchd follows the Mac's clock, so a Mac on New York time needs nothing at
+  daylight-saving changes. When New York and the Mac change on different
+  dates, the control server sees the drift at its 8am start and
+  re-registers the jobs (all but the ones running).
+- **Sleep:** launchd runs a job that came due while the Mac slept as soon as
+  it wakes. The installer sets `pmset repeat wakeorpoweron` for 7:50am New
+  York on weekdays, and the control server runs under `caffeinate -i` from
+  8am to 6pm. A laptop with its lid closed still sleeps.
+- **Drift warning:** the control server compares each job's next run with
   `schedule.json` and shows "A bot's start time is off" on the Bot controls
   tab when one differs by more than a minute.
 
@@ -944,39 +951,33 @@ the notes).
   `vX.Y.Z` tag with its own version, and saves the result in
   `data/update_status.json`.
 - If a newer version exists, the Bot controls tab shows a banner with every
-  version's notes since yours, and Windows shows one notification per new
+  version's notes since yours, and macOS shows one notification per new
   version.
 - **Update now** works only while the bots are idle: not Mon–Fri
   8am–5:15pm New York time, and not while any bot task is running. It runs
-  [scripts/update.ps1](scripts/update.ps1), which:
-  - refuses if code files were edited on that PC;
+  [scripts/update.sh](scripts/update.sh), which:
+  - refuses if code files were edited on that Mac;
   - fast-forwards to the tag, reinstalls the packages, checks that the code
-    loads, re-registers the tasks and restarts the control server;
+    loads, re-registers the launchd jobs and restarts the control server;
   - on any failure, goes back to the previous version;
   - writes the outcome to `data/update_result.json`, which the banner
     shows.
 
   It never touches `.env`, `data/` or the reports. An open dashboard tab
   reloads itself onto the new version. By hand:
-  `powershell -ExecutionPolicy Bypass -File scripts\update.ps1 [-Version v1.1.0]`.
+  `bash scripts/update.sh [v1.3.0]`.
 
 Tests: [tests/test_updates.py](tests/test_updates.py).
 
 ## Repositories
 
-Two identical repos, both with every strategy (including Stock ORB):
+This is the **Mac** repo, `rshukla29/trading-bot-mac` (public): Mac copies
+install and update from it, and `scripts/release.py` publishes its releases
+here only, with the installer zip attached. The Windows version lives in
+`rshukla29/trading-bot-first` (public) and `rshukla29/trading-bot` (private)
+and is never pushed to from here. Strategy fixes are copied over from the
+Windows repo (remote `windows`, fetch only) when wanted.
 
-- `rshukla29/trading-bot-first`: **public**. People install from it, and
-  GitHub Releases are published here.
-- `rshukla29/trading-bot`: **private** copy.
-
-Push master to both:
-
-```
-git push https://github.com/rshukla29/trading-bot-first.git master:master
-git push https://github.com/rshukla29/trading-bot.git master:master
-```
-
-(`scripts\release.py` does this for releases, tags included.) The private
-repo's history before it was made identical (2026-11-15) is kept on its
-branch `archive/before-sync-2026-11-15`.
+Tests on real Macs: [.github/workflows/macos.yml](.github/workflows/macos.yml)
+runs the installer end to end on macOS 15 and the newest macOS at every push (launchd jobs,
+a job firing, the wake-up, the Desktop app, an update and a rollback).
