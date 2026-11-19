@@ -926,7 +926,7 @@ Run tests with `pytest`.
 The version is in `pyproject.toml` and shown as a badge in the top right
 corner of the Bot controls tab, with a small **Update to vX** button beside
 it when a newer release exists (hover: when it last checked). Each release is a `vX.Y.Z` git tag plus a GitHub Release on
-**trading-bot-first** (the repo people install from), with its notes in
+**trading-bot-mac** (the repo Mac copies install from), with its notes in
 [CHANGELOG.md](CHANGELOG.md). Ordinary commits and pushes don't notify
 anyone; only a release does.
 
@@ -937,12 +937,13 @@ the notes).
 **Publishing a release (owner).**
 1. As you work, add a `- ` line under `## Unreleased` in CHANGELOG.md for
    each change users should know about, written for them. Commit it.
-2. Try it: `.venv\Scripts\python.exe scripts\release.py 1.1.0 --dry-run`.
-3. Publish: `.venv\Scripts\python.exe scripts\release.py 1.1.0`. It shows
+2. Try it, from the Mac repo's folder with any Python 3.11+ (this Windows
+   PC works too): `python scripts/release.py 1.3.0 --dry-run`.
+3. Publish: `python scripts/release.py 1.3.0`. It shows
    the notes and asks you to type `yes`. Then it sets the version, moves the
-   notes under `## 1.1.0 — <date>`, commits only those two files, tags
-   `v1.1.0`, pushes master and the tag to both repos, and creates the GitHub
-   Release on trading-bot-first.
+   notes under `## 1.3.0 — <date>`, commits only those two files, tags
+   `v1.3.0`, pushes master and the tag to trading-bot-mac only, and creates
+   the GitHub Release there with `Install-Trading-Bots-mac.zip` attached.
 
 **What an installed copy does** ([updates.py](src/tradingbot/updates.py)):
 - Each time the control server starts (8am on weekdays, or from the desktop

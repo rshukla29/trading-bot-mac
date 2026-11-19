@@ -1,14 +1,18 @@
 # Changelog
 
-What's new in each version of the trading bots. The newest version's notes
+What's new in each version of the trading bots for macOS. The newest version's notes
 appear on the dashboard's Bot controls tab when an update is available.
 
 Owner: add a "- " line under Unreleased for every change people should know
-about, then publish with `scripts\release.py X.Y.Z` (see README, "Releases
+about, then publish with `.venv/bin/python scripts/release.py X.Y.Z` (Mac repo only; see README, "Releases
 and updates"). Versions: X.Y.Z, where Z is a fix, Y a new feature, X a change
 that needs people to do something (e.g. new settings in .env).
 
 ## Unreleased
+
+- First macOS version. Download **Install-Trading-Bots-mac.zip** from the release page and double-click the installer inside: it installs Apple's command line tools and Python if needed, downloads the bots into the trading-bot folder in your home folder and sets everything up (docs/SETUP.md, step 4).
+- The bots start at their usual New York times through macOS's own scheduler (launchd), in your Mac's time zone, and the Mac wakes itself at 7:50am on weekdays and stays awake while the control server runs (8am to 6pm). Keep a laptop plugged in with the lid open.
+- A **Trading dashboard** app on the Desktop opens the dashboard; update notices and readiness problems appear as macOS notifications; **Update now** works the same as on Windows.
 
 ## 1.2.0 — 2026-11-18
 
