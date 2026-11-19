@@ -1,4 +1,7 @@
-"""Publish a new version of the trading bots (owner only).
+"""Publish a new version of the trading bots for macOS (owner only).
+
+This is the Mac repo (rshukla29/trading-bot-mac): it releases here only and
+never pushes to the Windows repos (trading-bot-first / trading-bot).
 
     .venv\\Scripts\\python.exe scripts\\release.py 1.1.0            # asks before publishing
     .venv\\Scripts\\python.exe scripts\\release.py 1.1.0 --dry-run  # show what it would do
@@ -9,11 +12,9 @@ Before running: list the changes under "## Unreleased" in CHANGELOG.md
 It then:
   1. moves those notes under "## 1.1.0 — <today>" and sets pyproject.toml's version;
   2. commits just those two files ("Release v1.1.0") and tags v1.1.0;
-  3. pushes master and the tag to both repos (they're identical: public
-     trading-bot-first and the private trading-bot), and creates the GitHub
-     Release on trading-bot-first, the repo people install from, with the
-     one-click installer (Install-Trading-Bots.cmd) attached: docs/SETUP.md
-     links to releases/latest/download/Install-Trading-Bots.cmd.
+  3. pushes master and the tag to trading-bot-mac and creates the GitHub
+     Release there, with the Mac installer (Install-Trading-Bots.command)
+     attached.
 
 Every installed copy finds the new tag at its next 8am check, shows it on
 the Bot controls tab and offers Update now (src/tradingbot/updates.py).
@@ -30,10 +31,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 from tradingbot import updates  # noqa: E402
 
-RELEASE_REPO = "rshukla29/trading-bot-first"  # public: people install from it; the GitHub Release goes here
+RELEASE_REPO = "rshukla29/trading-bot-mac"  # public: Mac copies install and update from it
 RELEASE_URL = f"https://github.com/{RELEASE_REPO}.git"
-MIRROR_URL = "https://github.com/rshukla29/trading-bot.git"  # private, identical copy
-INSTALLER = REPO / "Install-Trading-Bots.cmd"  # attached to every Release (docs/SETUP.md, step 4)
+INSTALLER = REPO / "Install-Trading-Bots.command"  # the Mac installer, attached to every Release
 
 
 def git(*args: str) -> str:
@@ -51,6 +51,8 @@ def main() -> None:
     version = args[0].lstrip("v")
     tag = "v" + version
 
+    if not INSTALLER.exists():
+        sys.exit(f"{INSTALLER.name} is missing: the Mac installer must exist before a Mac release.")
     if git("rev-parse", "--abbrev-ref", "HEAD") != "master":
         sys.exit("Switch to the master branch first.")
     if git("diff", "--cached", "--name-only"):
@@ -89,8 +91,7 @@ def main() -> None:
     notes_md = "\n".join(f"- {i}" for i in notes)
     git("commit", "-m", f"Release {tag}\n\n{notes_md}", "--", "pyproject.toml", "CHANGELOG.md")
     git("tag", "-a", tag, "-m", f"{tag}\n\n{notes_md}")
-    for url in (RELEASE_URL, MIRROR_URL):
-        git("push", url, "master:master", f"refs/tags/{tag}:refs/tags/{tag}")
+    git("push", RELEASE_URL, "master:master", f"refs/tags/{tag}:refs/tags/{tag}")
     out = subprocess.run(["gh", "release", "create", tag, str(INSTALLER), "--repo", RELEASE_REPO, "--title", tag,
                           "--notes", notes_md, "--verify-tag"], capture_output=True, text=True)
     if out.returncode != 0:

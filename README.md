@@ -1,5 +1,10 @@
 # trading-bot
 
+> **macOS version (work in progress).** This repo is the Mac copy of the trading
+> bots, kept separate from the Windows version (rshukla29/trading-bot-first).
+> The Mac installer, scheduler and updater are being built; until then the setup
+> steps below still describe Windows. Mac releases are published only from here.
+
 Automated trading bots for Interactive Brokers (via `ib_async`): seven
 independent strategies covering stocks and SPY options, plus daily,
 weekly and monthly P&L reports. **Paper trading only (account `DU…`) until

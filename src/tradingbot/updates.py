@@ -1,7 +1,7 @@
 """Versions and update notices.
 
 The version lives in pyproject.toml; each release is a git tag vX.Y.Z on
-trading-bot-first with its notes in CHANGELOG.md (scripts/release.py).
+trading-bot-mac with its notes in CHANGELOG.md (scripts/release.py).
 
 An installed copy checks once a day, when the control server starts: it
 runs `git fetch --tags` against the repo it was cloned from (no API key,
