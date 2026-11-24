@@ -98,12 +98,12 @@ def _claude() -> str | None:
 
 def daily_review(day: str | None = None, run=subprocess.run) -> int:
     """4:50pm: gather the day's facts, have Claude Code (read-only tools) write
-    the review, save it, commit it locally, rebuild the dashboard."""
+    the review, save it (on this Mac only), rebuild the dashboard."""
     day = day or date.today().isoformat()
     log = log_path("daily_review", day)
     run_module(["tradingbot.run_daily_review", day], log, run)
     if _dry():
-        _note(log, "would ask Claude for the review and commit it")
+        _note(log, "would ask Claude for the review and save it")
         return 0
     y, m, d = day.split("-")
     review_dir = REPO / "analysis" / "daily" / y / m / d
@@ -122,10 +122,7 @@ def daily_review(day: str | None = None, run=subprocess.run) -> int:
             (review_dir / f"review_{day}.md").write_text(review + "\n", encoding="utf-8")
         else:
             _note(log, f"Claude review failed (exit {out.returncode})")
-    # Commit locally (no push), like the daily snapshots.
-    with open(log, "ab") as f:
-        run(["git", "add", f"analysis/daily/{y}/{m}/{d}"], cwd=str(REPO), stdout=f, stderr=subprocess.STDOUT)
-        run(["git", "commit", "-m", f"Daily review: {day}"], cwd=str(REPO), stdout=f, stderr=subprocess.STDOUT)
+    # The review stays on this Mac (analysis/ isn't in git).
     run_module(["tradingbot.run_dashboard"], log, run)
     return 0
 

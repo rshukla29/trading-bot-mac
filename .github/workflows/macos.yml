@@ -55,6 +55,12 @@ jobs:
       - name: One-click installer, fresh folder (from the unzipped copy)
         run: bash "$RUNNER_TEMP/Install-Trading-Bots.command"
 
+      - name: A new install has no reports from other accounts
+        run: |
+          cd "$TB_INSTALL_DIR"
+          test -z "$(git ls-files reports analysis)"
+          test ! -e reports/2026 && test ! -e analysis/daily
+
       - name: python.org Python was installed (new-Mac run only)
         if: matrix.force_python == '1'
         run: |
@@ -121,14 +127,15 @@ jobs:
           git -C "$GITHUB_WORKSPACE" commit --allow-empty -qm "CI: next release"
           git -C "$GITHUB_WORKSPACE" tag -a v99.0.0 -m v99.0.0
           cd "$TB_INSTALL_DIR"
-          # A copy that has run for a day has commits of its own (the bots commit reports).
+          # A copy installed before v1.4.2 has commits of its own (the bots used to commit reports).
           mkdir -p reports/ci && echo "<p>local report</p>" > reports/ci/local_report.html
-          git add reports/ci/local_report.html && git commit -qm "Snapshot: CI local report"
+          git add -f reports/ci/local_report.html && git commit -qm "Snapshot: CI local report"
           bash scripts/update.sh v99.0.0 --no-restart --no-tasks
           cat data/update_result.json
           python3 -c "import json; r=json.load(open('data/update_result.json')); assert r['ok'], r"
           git merge-base --is-ancestor "$(git -C "$GITHUB_WORKSPACE" rev-parse v99.0.0^{commit})" HEAD
-          test -f reports/ci/local_report.html
+          test -f reports/ci/local_report.html          # the report is kept...
+          test -z "$(git ls-files reports analysis)"    # ...but no longer in git
           bash scripts/update.sh v99.9.9 --no-restart --no-tasks || true
           python3 -c "import json; r=json.load(open('data/update_result.json')); assert not r['ok'] and 'not found' in r['message'], r"
 

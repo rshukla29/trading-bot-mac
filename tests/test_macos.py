@@ -190,7 +190,7 @@ def test_control_server_only_runs_in_its_hours(repo):
     assert fake.calls[0][2:] == ["tradingbot.run_control_server", "--open", "--until", "18:00"]
 
 
-def test_daily_review_without_claude_still_commits_and_rebuilds(repo, monkeypatch):
+def test_daily_review_without_claude_still_rebuilds_and_never_commits(repo, monkeypatch):
     (repo / "scripts").mkdir()
     (repo / "scripts" / "daily_review_prompt.md").write_text("Review {DATE}")
     monkeypatch.setattr(run_task, "_claude", lambda: None)
@@ -198,7 +198,7 @@ def test_daily_review_without_claude_still_commits_and_rebuilds(repo, monkeypatc
     assert run_task.daily_review("2026-11-18", run=fake) == 0
     flat = [" ".join(map(str, c)) for c in fake.calls]
     assert "tradingbot.run_daily_review 2026-11-18" in flat[0]
-    assert any(c.startswith("git commit -m Daily review: 2026-11-18") for c in flat)
+    assert not any(c.startswith("git ") for c in flat)  # reviews stay on this Mac
     assert "tradingbot.run_dashboard" in flat[-1]
     assert "Claude Code isn't installed" in (repo / "logs" / "daily_review_2026-11-18.log").read_text()
 

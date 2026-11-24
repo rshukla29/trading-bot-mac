@@ -105,6 +105,13 @@ rollback() {
 # here: step 1 refused edited files).
 git merge --no-edit --quiet -X theirs -m "Update to $VERSION" "$VERSION" \
     || rollback "the release couldn't be merged with this copy's own commits"
+# Reports and reviews stay on this Mac only (no longer in git): stop tracking
+# any this copy committed itself. The files are kept.
+if [ -n "$(git ls-files reports analysis)" ]; then
+    git rm -r --cached --quiet --ignore-unmatch reports analysis \
+        && git commit --quiet -m "Keep this Mac's reports out of git" \
+        || rollback "couldn't stop tracking this Mac's reports"
+fi
 
 # 3. Packages, a load check, the launchd jobs.
 "$PY" -m pip install --quiet -e ".[dev]" || rollback "installing the Python packages failed"
